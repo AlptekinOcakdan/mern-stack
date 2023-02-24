@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 
 import {Add} from '@mui/icons-material';
 import {useTable} from "@pankod/refine-core";
@@ -23,6 +23,20 @@ const AllProperties = () => {
 
     const allProperties = data?.data ?? [];
 
+    const currentPrice = sorter.find((item) => item.field === 'price')?.order;
+
+    const toggleSort = (field: string) => {
+        setSorter([{field, order: currentPrice === 'asc' ? 'desc' : 'asc'}])
+    }
+
+    const currentFilterValues = useMemo(() => {
+        const logicalFilters = filters.flatMap((item) => ('field' in item ? item : []));
+        return {
+            title: logicalFilters.find((item) => item.field === 'title')?.value || '',
+            propertyType: logicalFilters.find((item) => item.field === 'propertyType')?.value || '',
+        }
+    }, [filters])
+
     if (isLoading) return <Typography>Loading...</Typography>
     if (isError) return <Typography>Error...</Typography>
 
@@ -35,15 +49,22 @@ const AllProperties = () => {
                         {!allProperties.length ? 'There are no properties' : 'All Properties'}
                         <Box mb={2} mt={3} display="flex" width="84%" justifyContent="space-between" flexWrap="wrap">
                             <Box display="flex" gap={2} flexWrap="wrap" mb={{xs: '20px', sm: 0}}>
-                                <CustomButton title={`Sort price`} backgroundColor="#475be8" color="#fcfcfc"
-                                              handleClick={() => {
-                                              }}/>
+                                <CustomButton title={`Sort price ${currentPrice === 'asc' ? '↑' : '↓'}`}
+                                              backgroundColor="#475be8" color="#fcfcfc"
+                                              handleClick={() => toggleSort('price')}/>
                                 <TextField
                                     variant="outlined"
                                     color="info"
                                     placeholder="Search by title"
-                                    value=''
-                                    onChange={() => {
+                                    value={currentFilterValues.title}
+                                    onChange={(e) => {
+                                        setFilters([
+                                            {
+                                                field: 'title',
+                                                operator: 'contains',
+                                                value: e.currentTarget.value ? e.currentTarget.value : undefined
+                                            }
+                                        ])
                                     }}
                                 />
                                 <Select
@@ -53,10 +74,20 @@ const AllProperties = () => {
                                     required
                                     inputProps={{'aria-label': 'Without label'}}
                                     defaultValue=""
-                                    value=""
-                                    onChange={() => {
-                                    }}>
+                                    value={currentFilterValues.propertyType}
+                                    onChange={(e) => {
+                                        setFilters([
+                                            {
+                                                field: 'propertyType',
+                                                operator: 'eq',
+                                                value: e.target.value
+                                            }
+                                        ], 'replace')
+                                    }}
+                                >
                                     <MenuItem value="">All</MenuItem>
+                                    {['Apartment', 'Villa', 'Farmhouse', 'Condos', 'Townhouse', 'Duplex', 'Studio', 'Chalet'].map((type) => (
+                                        <MenuItem key={type} value={type.toLowerCase()}>{type}</MenuItem>))}
                                 </Select>
                             </Box>
                         </Box>
@@ -82,10 +113,15 @@ const AllProperties = () => {
             </Box>
             {allProperties.length > 0 && (
                 <Box display="flex" gap={2} mt={3} flexWrap="wrap">
-                    <CustomButton title="Previous" handleClick={() => setCurrent((prev) => prev - 1)}
-                                  backgroundColor="#475be8" color="#fcfcfc" disabled={!(current > 1)}/>
+                    <CustomButton
+                        title="Previous"
+                        handleClick={() => setCurrent((prev) => prev - 1)}
+                        backgroundColor="#475be8"
+                        color="#fcfcfc"
+                        disabled={!(current > 1)}
+                    />
                     <Box display={{xs: 'hidden', sm: 'flex'}} alignItems="center" gap="5px">
-                        Page{' '}<strong>{current}of {pageCount}</strong>
+                        Page{' '}<strong>{current} of {pageCount}</strong>
                     </Box>
                     <CustomButton title="Next" handleClick={() => setCurrent((prev) => prev + 1)}
                                   backgroundColor="#475be8" color="#fcfcfc" disabled={current === pageCount}/>
@@ -96,11 +132,12 @@ const AllProperties = () => {
                         required
                         inputProps={{'aria-label': 'Without label'}}
                         defaultValue={10}
-                        value=""
-                        onChange={() => {
-                        }}>
-                        {[10, 20, 40, 40, 50].map((size) => (
-                            <MenuItem key={size} value={size}>Show {size}</MenuItem>
+                        onChange={(e) => setPageSize(e.target.value ? Number(e.target.value) : 10)}
+                    >
+                        {[10, 20, 30, 40, 50].map((size) => (
+                            <MenuItem key={size} value={size}>
+                                Show {size}
+                            </MenuItem>
                         ))}
                     </Select>
                 </Box>
